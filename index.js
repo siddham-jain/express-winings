@@ -1,6 +1,9 @@
 const express = require('express');
+const fs = require('fs');
+
 const app = express();
 
+// Rest of the code remains the same as in the previous example
 app.use(express.json());
 const morgan = require('morgan');
 app.use(morgan('combined'));
@@ -10,17 +13,35 @@ const logger = (req, res, next) => {
     const date = new Date().toISOString();
     const method = req.method;
     const url = req.url;
-
     console.log(`[${date}] ${hostname} ${method} ${url}`);
     next();
 };
 
+const coursesFilePath = './courses.json';
 
-let courses = [
-    {id: 1, name: "DSA"},
-    {id: 2, name: "DBMS"},
-    {id: 3, name: "manners"}
-];
+const readFromFile = (filePath) => {
+    try {
+        return JSON.parse(fs.readFileSync(filePath));
+    } catch(error){
+        console.log("Error reading file:", error);
+        return [];
+    }
+}
+
+const writeToFile = (filePath, data) => {
+    try {
+        fs.writeFileSync('courses.json', JSON.stringify(data));
+    } catch(error){
+        console.log("Error writing file:", error);
+    }
+}
+
+let courses = [];
+try {
+    courses = JSON.parse(fs.readFileSync(coursesFilePath));
+} catch (error) {
+    console.error('Error reading courses file:', error);
+}
 
 app.get('/courses', (req, res) => {
     res.json(courses);
@@ -37,7 +58,8 @@ app.post('/courses', (req, res) => {
         name: req.body.name
     };
     courses.push(course);
-    res.json(course);
+    writeToFile(coursesFilePath, courses);
+    res.json(readFromFile(coursesFilePath));
 });
 
 app.delete('/courses/:id', (req, res) => {
@@ -53,6 +75,8 @@ app.delete('/courses/:id', (req, res) => {
     for (let i = index; i < courses.length; i++) {
         courses[i].id = i + 1;
     }
+
+    fs.writeFileSync(coursesFilePath, JSON.stringify(courses));
     res.json({ deletedCourse, updatedCourses: courses });
 });
 
@@ -63,5 +87,6 @@ app.put('/courses/:id', (req, res) => {
     }
 
     course.name = req.body.name;
+    fs.writeFileSync(coursesFilePath, JSON.stringify(courses));
     res.json(course);
 });
