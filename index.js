@@ -2,6 +2,18 @@ const express = require('express');
 const app = express();
 
 app.use(express.json());
+const morgan = require('morgan');
+app.use(morgan('combined'));
+
+const logger = (req, res, next) => {
+    const hostname = req.hostname;
+    const date = new Date().toISOString();
+    const method = req.method;
+    const url = req.url;
+
+    console.log(`[${date}] ${hostname} ${method} ${url}`);
+    next();
+};
 
 
 let courses = [
