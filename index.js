@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 
 const app = express();
+const path = require('path');
 
 // Rest of the code remains the same as in the previous example
 app.use(express.json());
@@ -17,7 +18,7 @@ const logger = (req, res, next) => {
     next();
 };
 
-const coursesFilePath = './courses.json';
+const coursesFilePath = path.join(__dirname, 'courses.json');
 
 const readFromFile = (filePath) => {
     try {
