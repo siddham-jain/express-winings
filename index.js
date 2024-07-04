@@ -4,7 +4,7 @@ const fs = require('fs');
 const app = express();
 const path = require('path');
 
-// Rest of the code remains the same as in the previous example
+
 app.use(express.json());
 const morgan = require('morgan');
 app.use(morgan('combined'));
