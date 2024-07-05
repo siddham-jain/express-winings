@@ -3,11 +3,10 @@ const fs = require('fs');
 
 const app = express();
 const path = require('path');
+app.use(express.json()); //middleware for passing json objects
 
-
-app.use(express.json());
 const morgan = require('morgan');
-app.use(morgan('combined'));
+app.use(morgan('combined')); //middleware for logging activities
 
 const logger = (req, res, next) => {
     const hostname = req.hostname;
@@ -92,29 +91,41 @@ app.put('/courses/:id', (req, res) => {
     res.json(course);
 });
 
+const mongoose = require('mongoose');
+// const module: mongoose = require("mongoose");
+mongoose.connect("mongodb+srv://siddhamjain:oPu7SWjaBNawguOG@mongo-winings.8i8fsyd.mongodb.net/?retryWrites=true&w=majority&appName=mongo-winings")
+    .then(() => console.log('Connected to MongoDB...'))
+    .catch(err => console.error('Could not connect to MongoDB...', err));
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
-const uri = "mongodb+srv://siddhamjain:<password>@mongo-winings.8i8fsyd.mongodb.net/?appName=mongo-winings";
+const productSchemaPath = path.join(__dirname, 'productSchema.json');
+const productSchema = new mongoose.Schema(JSON.parse(fs.readFileSync(productSchemaPath)));
+const productModel = mongoose.model('products', productSchema);
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
-const client = new MongoClient(uri, {
-    serverApi: {
-        version: ServerApiVersion.v1,
-        strict: true,
-        deprecationErrors: true,
+app.post('/products', async (req, res) => {
+    try {
+        let products;
+
+        if (Array.isArray(req.body)) {
+            // If the request body is an array, create multiple products
+            products = await productModel.create(req.body.map(product => ({
+                product_name: product.product_name,
+                product_price: product.product_price,
+                isInStock: product.isInStock,
+                category: product.category
+            })));
+        } else {
+            // If the request body is a single object, create one product
+            products = await productModel.create({
+                product_name: req.body.product_name,
+                product_price: req.body.product_price,
+                isInStock: req.body.isInStock,
+                category: req.body.category
+            });
+        }
+
+        res.status(201).json(products);
+    } catch (error) {
+        console.error('Error creating product(s):', error);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-
-async function run() {
-    try {
-        // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
-        // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
-    } finally {
-        // Ensures that the client will close when you finish/error
-        await client.close();
-    }
-}
-run().catch(console.dir);
