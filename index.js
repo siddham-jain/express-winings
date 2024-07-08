@@ -1,9 +1,15 @@
 const express = require('express');
 const fs = require('fs');
+require('dotenv').config();
 
 const app = express();
 const path = require('path');
 app.use(express.json()); //middleware for passing json objects
+
+// const bodyParser = require('body-parser');
+
+// Middleware to parse JSON bodies
+// app.use(bodyParser.json());
 
 const morgan = require('morgan');
 app.use(morgan('combined')); //middleware for logging activities
@@ -92,40 +98,76 @@ app.put('/courses/:id', (req, res) => {
 });
 
 const mongoose = require('mongoose');
+const {all} = require("express/lib/application");
+// const {RESPONSE} = require("mongodb/src/constants");
 // const module: mongoose = require("mongoose");
-mongoose.connect("mongodb+srv://siddhamjain:oPu7SWjaBNawguOG@mongo-winings.8i8fsyd.mongodb.net/?retryWrites=true&w=majority&appName=mongo-winings")
+mongoose.connect(process.env.DB_URI)
     .then(() => console.log('Connected to MongoDB...'))
     .catch(err => console.error('Could not connect to MongoDB...', err));
 
 const productSchemaPath = path.join(__dirname, 'productSchema.json');
 const productSchema = new mongoose.Schema(JSON.parse(fs.readFileSync(productSchemaPath)));
-const productModel = mongoose.model('products', productSchema);
+const productTable = mongoose.model('products', productSchema);
 
+// to get products from db
+// app.get('/products', async (req, res) => {
+//     try {
+//         const products = await productTable.find();
+//         res.json(products);
+//     } catch (err) {
+//         res.status(500).send(err.message);
+//     }
+// });
+
+// to add a product to db
 app.post('/products', async (req, res) => {
     try {
-        let products;
-
-        if (Array.isArray(req.body)) {
-            // If the request body is an array, create multiple products
-            products = await productModel.create(req.body.map(product => ({
-                product_name: product.product_name,
-                product_price: product.product_price,
-                isInStock: product.isInStock,
-                category: product.category
-            })));
-        } else {
-            // If the request body is a single object, create one product
-            products = await productModel.create({
-                product_name: req.body.product_name,
-                product_price: req.body.product_price,
-                isInStock: req.body.isInStock,
-                category: req.body.category
-            });
-        }
-
+        const products = await productTable.create(req.body);
         res.status(201).json(products);
     } catch (error) {
         console.error('Error creating product(s):', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
+// to get products from db
+app.get('/products', async (req, res) => {
+    const allProducts = await productTable.find();
+    res.json(allProducts);
+});
+
+// to get products by id
+app.get('/products/:id', async (req, res) => {
+    try {
+        const product = await productTable.findById(req.params.id);
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        res.json(product);
+    } catch (error) {
+        console.error('Error getting product by ID:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// to update a product by id
+app.put('/products/:id', async(req, res) => {
+    try {
+        const updatedProduct = await productTable.findByIdAndUpdate(req.params.id, req.body);
+        res.json(updatedProduct);
+    } catch(err){
+        res.status(404).send('Product not found');
+    }
+});
+
+// to delete a product by id
+app.delete('/products/:id', async (req, res) => {
+   try{
+         const deletedProduct = await productTable.findByIdAndDelete(req.params.id);
+         res.json(deletedProduct);
+   } catch (err) {
+         res.status(404).send('Product not found');
+   }
+});
+
+
